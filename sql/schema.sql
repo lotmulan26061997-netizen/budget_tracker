@@ -17,7 +17,7 @@ CREATE TABLE profiles (
 CREATE TABLE transactions (
   id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id    UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  date       DATE        NOT NULL,
+  tx_date    DATE        NOT NULL,
   type       TEXT        NOT NULL CHECK (type IN ('in', 'out', 'sv')),
   category   TEXT        NOT NULL,
   amount     NUMERIC(12,2) NOT NULL CHECK (amount > 0),
@@ -26,7 +26,7 @@ CREATE TABLE transactions (
 );
 
 CREATE INDEX idx_transactions_user ON transactions(user_id);
-CREATE INDEX idx_transactions_date ON transactions(user_id, date);
+CREATE INDEX idx_transactions_date ON transactions(user_id, tx_date);
 
 -- 3. Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -69,3 +69,4 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+

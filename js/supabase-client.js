@@ -72,11 +72,11 @@ async function sbLoadTransactions() {
   const { data, error } = await sb
     .from("transactions")
     .select("*")
-    .order("date", { ascending: false });
+    .order("tx_date", { ascending: false });
   if (error) throw error;
   return data.map((row) => ({
     id: row.id,
-    d: row.date,
+    d: row.tx_date,
     t: row.type,
     c: row.category,
     a: Number(row.amount),
@@ -90,7 +90,7 @@ async function sbAddTransaction(tx) {
     .from("transactions")
     .insert({
       user_id: user.id,
-      date: tx.d,
+      tx_date: tx.d,
       type: tx.t,
       category: tx.c,
       amount: tx.a,
@@ -101,7 +101,7 @@ async function sbAddTransaction(tx) {
   if (error) throw error;
   return {
     id: data.id,
-    d: data.date,
+    d: data.tx_date,
     t: data.type,
     c: data.category,
     a: Number(data.amount),
@@ -128,7 +128,7 @@ async function sbImportData(localState) {
   if (localState.tx && localState.tx.length > 0) {
     const rows = localState.tx.map((tx) => ({
       user_id: user.id,
-      date: tx.d,
+      tx_date: tx.d,
       type: tx.t,
       category: tx.c,
       amount: tx.a,
@@ -138,3 +138,4 @@ async function sbImportData(localState) {
     if (error) throw error;
   }
 }
+
