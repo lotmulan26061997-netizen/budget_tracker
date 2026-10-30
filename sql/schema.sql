@@ -1,28 +1,36 @@
 -- =============================================
--- Budget Tracker — Supabase Schema
+-- Budget Tracker — Clean Re-installation
 -- Run this in: Supabase Dashboard → SQL Editor
 -- =============================================
 
+-- Clean up any existing objects first
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS profiles_updated_at ON profiles;
+DROP FUNCTION IF EXISTS handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+
 -- 1. Profiles table (user settings)
 CREATE TABLE profiles (
-  id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  target     NUMERIC     NOT NULL DEFAULT 20,
-  start_date DATE        NOT NULL DEFAULT '2026-11-02',
+  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  target      NUMERIC     NOT NULL DEFAULT 20,
+  start_date  DATE        NOT NULL DEFAULT '2026-11-02',
   num_periods INTEGER    NOT NULL DEFAULT 14,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- 2. Transactions table
 CREATE TABLE transactions (
   id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  user_id    UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  tx_date    DATE        NOT NULL,
-  type       TEXT        NOT NULL CHECK (type IN ('in', 'out', 'sv')),
-  category   TEXT        NOT NULL,
+  user_id    UUID          NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  tx_date    DATE          NOT NULL,
+  type       TEXT          NOT NULL CHECK (type IN ('in', 'out', 'sv')),
+  category   TEXT          NOT NULL,
   amount     NUMERIC(12,2) NOT NULL CHECK (amount > 0),
-  note       TEXT        NOT NULL DEFAULT '',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  note       TEXT          NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_transactions_user ON transactions(user_id);
@@ -32,13 +40,13 @@ CREATE INDEX idx_transactions_date ON transactions(user_id, tx_date);
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
--- Profiles: users can only access their own row
+-- Profiles policies
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "profiles_delete" ON profiles FOR DELETE USING (auth.uid() = id);
 
--- Transactions: users can only access their own rows
+-- Transactions policies
 CREATE POLICY "transactions_select" ON transactions FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "transactions_insert" ON transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "transactions_update" ON transactions FOR UPDATE USING (auth.uid() = user_id);
@@ -70,3 +78,7 @@ CREATE TRIGGER profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- 6. Also create profiles for any existing users that don't have one yet
+INSERT INTO profiles (id)
+SELECT id FROM auth.users
+ON CONFLICT (id) DO NOTHING;
