@@ -1037,22 +1037,101 @@ function useOffline() {
 }
 
 function updateUserDisplay() {
-  const avatar = document.getElementById("sidebar-avatar");
-  const emailEl = document.getElementById("sidebar-email");
-  const syncDot = document.querySelector("#sidebar-sync .sync-dot");
-  const syncText = document.getElementById("sync-text");
+  const profileName = document.getElementById("profile-name");
+  const fallback = document.getElementById("profile-avatar-fallback");
+  const syncDot = document.getElementById("top-sync-dot");
+  const syncText = document.getElementById("top-sync-text");
+
+  let displayName = "Guest User";
+  let initial = "G";
 
   if (currentUser && isOnline) {
-    const initial = (currentUser.email || "U")[0].toUpperCase();
-    avatar.textContent = initial;
-    emailEl.textContent = currentUser.email;
-    syncDot.classList.remove("offline");
-    syncText.textContent = "Cloud Synced";
+    displayName = currentUser.email ? currentUser.email.split("@")[0] : "User";
+    initial = (displayName || "U")[0].toUpperCase();
+    if (syncDot) syncDot.classList.remove("offline");
+    if (syncText) syncText.textContent = "Cloud Synced";
   } else {
-    avatar.textContent = "O";
-    emailEl.textContent = "Offline Mode";
-    syncDot.classList.add("offline");
-    syncText.textContent = "LocalStorage";
+    displayName = "Offline Account";
+    initial = "O";
+    if (syncDot) syncDot.classList.add("offline");
+    if (syncText) syncText.textContent = "LocalStorage";
+  }
+
+  if (profileName) profileName.textContent = displayName;
+  if (fallback) fallback.textContent = initial;
+
+  // Load avatar
+  const avatarKey = "wb_avatar_" + (currentUser?.id || "guest");
+  const savedAvatar = S.s?.avatar || localStorage.getItem(avatarKey);
+  renderAvatar(savedAvatar);
+}
+
+function renderAvatar(avatarDataUrl) {
+  const img = document.getElementById("profile-avatar-img");
+  const fallback = document.getElementById("profile-avatar-fallback");
+  if (!img || !fallback) return;
+
+  if (avatarDataUrl) {
+    img.src = avatarDataUrl;
+    img.style.display = "block";
+    fallback.style.display = "none";
+  } else {
+    img.style.display = "none";
+    fallback.style.display = "block";
+  }
+}
+
+function handleAvatarUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    alert("Please select a valid image file.");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      // Center crop square and compress to 180x180
+      const canvas = document.createElement("canvas");
+      const size = 180;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+
+      const minDim = Math.min(img.width, img.height);
+      const startX = (img.width - minDim) / 2;
+      const startY = (img.height - minDim) / 2;
+
+      ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
+
+      const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.88);
+      saveUserAvatar(compressedDataUrl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveUserAvatar(dataUrl) {
+  const avatarKey = "wb_avatar_" + (currentUser?.id || "guest");
+  try {
+    localStorage.setItem(avatarKey, dataUrl);
+  } catch (e) {}
+
+  if (!S.s) S.s = { target: 20, start: "2026-11-02", n: 14 };
+  S.s.avatar = dataUrl;
+  saveLocal();
+  renderAvatar(dataUrl);
+
+  if (isOnline && currentUser) {
+    try {
+      await sbSaveProfile(S.s);
+    } catch (e) {
+      console.warn("Could not sync avatar to cloud:", e);
+    }
   }
 }
 

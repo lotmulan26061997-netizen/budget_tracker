@@ -64,6 +64,27 @@
         </div>
       </div>
 
+      <!-- User Profile Card (Above + Add New, Matches Image 1) -->
+      <div class="user-top-profile">
+        <div class="avatar-upload-wrapper" onclick="document.getElementById('avatar-file-input').click()" title="Click to upload profile photo">
+          <div class="avatar-img-container" id="profile-avatar-container">
+            <span class="avatar-fallback" id="profile-avatar-fallback">U</span>
+            <img id="profile-avatar-img" class="avatar-photo" style="display:none;" alt="Profile Picture">
+          </div>
+          <div class="avatar-camera-badge" title="Change photo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
+        </div>
+        <div class="profile-info">
+          <span class="profile-name" id="profile-name">Guest User</span>
+          <span class="profile-role">
+            <span class="sync-dot" id="top-sync-dot"></span>
+            <span id="top-sync-text">Connected</span>
+          </span>
+        </div>
+      </div>
+
       <div class="sidebar-action">
         <button class="btn btn-add-new" onclick="openAddModal()">
           <span class="plus-icon">+</span>
@@ -94,18 +115,10 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-profile-badge">
-          <div class="avatar" id="sidebar-avatar">U</div>
-          <div class="user-meta">
-            <span class="user-name" id="sidebar-email">Guest User</span>
-            <span class="user-sync-status" id="sidebar-sync">
-              <span class="sync-dot"></span> <span id="sync-text">Connected</span>
-            </span>
-          </div>
-          <button class="btn-icon" onclick="handleLogout()" title="Log out">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-          </button>
-        </div>
+        <button class="nav-item logout-btn" onclick="handleLogout()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          <span>Log Out · ចាកចេញ</span>
+        </button>
       </div>
     </aside>
 

@@ -16,6 +16,7 @@ CREATE TABLE profiles (
   target      NUMERIC     NOT NULL DEFAULT 20,
   start_date  DATE        NOT NULL DEFAULT '2026-11-02',
   num_periods INTEGER    NOT NULL DEFAULT 14,
+  avatar_url  TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );

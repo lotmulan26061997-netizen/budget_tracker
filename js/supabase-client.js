@@ -62,20 +62,28 @@ async function sbLoadProfile() {
     target: Number(data.target),
     start: data.start_date,
     n: data.num_periods,
+    avatar: data.avatar_url || null,
   };
 }
 
 async function sbSaveProfile(settings) {
   const user = await sbGetUser();
-  const { error } = await sb
-    .from("profiles")
-    .update({
-      target: settings.target,
-      start_date: settings.start,
-      num_periods: settings.n,
-    })
-    .eq("id", user.id);
-  if (error) throw error;
+  const updateData = {
+    target: settings.target,
+    start_date: settings.start,
+    num_periods: settings.n,
+  };
+  if (settings.avatar !== undefined) {
+    updateData.avatar_url = settings.avatar;
+  }
+  const { error } = await sb.from("profiles").update(updateData).eq("id", user.id);
+  if (error && updateData.avatar_url) {
+    // If avatar_url column doesn't exist yet on database, fallback to updating without it
+    delete updateData.avatar_url;
+    await sb.from("profiles").update(updateData).eq("id", user.id);
+  } else if (error) {
+    throw error;
+  }
 }
 
 // ===== Transactions =====
