@@ -1,0 +1,10 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Original single-file version
+Budget Tracker copy 2.html
