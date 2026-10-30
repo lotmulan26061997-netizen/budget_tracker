@@ -1,5 +1,5 @@
 // sw.js — Waypoint Budget Service Worker for PWA
-const CACHE_NAME = 'waypoint-v1';
+const CACHE_NAME = 'waypoint-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -62,3 +62,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
