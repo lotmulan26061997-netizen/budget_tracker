@@ -1,13 +1,15 @@
 # Budget Tracker · កម្មវិធីតាមដានថវិកា
 
-A lightweight personal budget tracker with bilingual Khmer/English UI, dark mode support, and local storage persistence.
+A lightweight personal budget tracker with bilingual Khmer/English UI, dark mode, and cloud sync via Supabase.
 
 ## Features
 
 - **Track income, expenses & savings deposits** across pay periods
 - **10 expense categories** (Rent, Food, Travel, Phone, etc.)
 - **Auto-calculated summaries** — savings rate, cumulative totals, target vs. actual
-- **Dark mode** — follows system preference or manual toggle
+- **Cloud sync** — data stored in Supabase with user authentication
+- **Offline mode** — works with localStorage when not logged in
+- **Dark mode** — follows system preference
 - **Backup & restore** — export/import JSON data
 - **Copy to Excel** — one-click TSV export
 - **Bilingual** — English + Khmer labels
@@ -16,39 +18,49 @@ A lightweight personal budget tracker with bilingual Khmer/English UI, dark mode
 
 ```
 budget_tracker/
-├── index.html          # Main HTML entry point
+├── index.html              # Entry point with auth screen + app shell
 ├── css/
-│   └── style.css       # All styles (theme, layout, components)
+│   └── style.css           # All styles (theme, layout, auth, components)
 ├── js/
-│   └── app.js          # Application logic
+│   ├── supabase-client.js  # Supabase init, auth & CRUD functions
+│   └── app.js              # Application logic & views
+├── sql/
+│   └── schema.sql          # Database schema (run in Supabase SQL Editor)
 ├── .gitignore
 └── README.md
 ```
 
-## Getting Started
+## Setup
 
-No build step required — just open `index.html` in a browser or deploy to any static host.
+### 1. Supabase Database
 
-### Local Development
+1. Go to your [Supabase Dashboard](https://supabase.com/dashboard)
+2. Open **SQL Editor**
+3. Paste and run the contents of `sql/schema.sql`
+
+### 2. Local Development
+
+No build step required — open `index.html` in a browser or use a local server:
 
 ```bash
-# Using Python
-python3 -m http.server 3000
-
-# Using Node
 npx serve .
 ```
 
-### Deploy to Vercel
+### 3. Deploy to Vercel
 
 1. Push this repo to GitHub
 2. Go to [vercel.com](https://vercel.com) → **Add New Project**
-3. Import your GitHub repository
-4. Framework Preset: **Other**
-5. Click **Deploy**
+3. Import the repository → Framework: **Other** → **Deploy**
 
-That's it — Vercel serves static files out of the box with no configuration needed.
+## Auth
+
+- **Sign up** with email + password (Supabase Auth)
+- **Offline mode** available for localStorage-only usage
+- Existing local data can be imported to the cloud after signing in
 
 ## Data Storage
 
-All data is stored in the browser's `localStorage` under the key `lkb1`. Use the **Settings → Backup** section to export/import your data.
+| Mode    | Storage          | Sync   |
+|---------|-----------------|--------|
+| Online  | Supabase (cloud) | ✅ Real-time across devices |
+| Offline | localStorage     | ❌ Browser-only |

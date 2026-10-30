@@ -24,14 +24,18 @@ const SV = [
 // ===== State =====
 let S = { s: { target: 20, start: "2026-11-02", n: 14 }, tx: [] },
   tab = "add",
-  per = null;
+  per = null,
+  currentUser = null,
+  isOnline = false, // true = using Supabase, false = localStorage only
+  authMode = "login";
 
+// Load localStorage data (used as fallback or offline mode)
 try {
   const r = localStorage.getItem("lkb1");
   if (r) S = Object.assign(S, JSON.parse(r));
 } catch (e) {}
 
-const save = () => {
+const saveLocal = () => {
   try {
     localStorage.setItem("lkb1", JSON.stringify(S));
   } catch (e) {}
@@ -126,6 +130,150 @@ function calc() {
 
 const cl = (v) => (v > 0.005 ? "p" : v < -0.005 ? "n" : "");
 
+// ===== Auth UI =====
+function authTab(mode) {
+  authMode = mode;
+  const btns = document.querySelectorAll(".auth-tabs button");
+  btns.forEach((b) => b.classList.remove("on"));
+  btns[mode === "login" ? 0 : 1].classList.add("on");
+  document.getElementById("auth-btn").textContent =
+    mode === "login" ? "Log in" : "Sign up";
+  document.getElementById("auth-msg").textContent = "";
+  document.getElementById("auth-msg").className = "mu";
+}
+
+async function handleAuth(e) {
+  e.preventDefault();
+  const email = document.getElementById("auth-email").value;
+  const pass = document.getElementById("auth-pass").value;
+  const msg = document.getElementById("auth-msg");
+  const btn = document.getElementById("auth-btn");
+
+  btn.disabled = true;
+  msg.textContent = authMode === "login" ? "Logging in..." : "Signing up...";
+  msg.className = "mu";
+
+  try {
+    if (authMode === "login") {
+      await sbSignIn(email, pass);
+      // Auth state change listener will handle the rest
+    } else {
+      await sbSignUp(email, pass);
+      msg.textContent = "Check your email to confirm your account, then log in.";
+      msg.className = "mu ok";
+      btn.disabled = false;
+    }
+  } catch (err) {
+    msg.textContent = err.message || "Something went wrong.";
+    msg.className = "mu err";
+    btn.disabled = false;
+  }
+}
+
+function useOffline() {
+  isOnline = false;
+  currentUser = null;
+  showApp();
+}
+
+// ===== Screen Management =====
+function showAuth() {
+  document.getElementById("auth-screen").style.display = "flex";
+  document.getElementById("app").style.display = "none";
+}
+
+function showApp() {
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  renderUserBar();
+  draw();
+}
+
+function renderUserBar() {
+  const bar = document.getElementById("user-bar");
+  if (currentUser && isOnline) {
+    bar.innerHTML = `<span class="sync-dot" title="Synced with Supabase"></span>
+      <span class="user-email" title="${esc(currentUser.email)}">${esc(currentUser.email)}</span>
+      <button onclick="handleLogout()">Log out</button>`;
+  } else {
+    bar.innerHTML = `<span class="sync-dot offline" title="Offline — localStorage only"></span>
+      <span class="user-email">Offline mode</span>
+      <button onclick="showAuth()">Log in</button>`;
+  }
+}
+
+async function handleLogout() {
+  try {
+    await sbSignOut();
+  } catch (e) {}
+  currentUser = null;
+  isOnline = false;
+  // Reload localStorage data
+  try {
+    const r = localStorage.getItem("lkb1");
+    if (r) S = Object.assign({ s: { target: 20, start: "2026-11-02", n: 14 }, tx: [] }, JSON.parse(r));
+  } catch (e) {}
+  per = null;
+  showAuth();
+}
+
+// ===== Data Loading (Supabase) =====
+async function loadFromSupabase() {
+  const [profile, transactions] = await Promise.all([
+    sbLoadProfile(),
+    sbLoadTransactions(),
+  ]);
+  S.s = profile;
+  S.tx = transactions;
+  per = null;
+}
+
+function hasLocalData() {
+  try {
+    const r = localStorage.getItem("lkb1");
+    if (!r) return false;
+    const d = JSON.parse(r);
+    return d.tx && d.tx.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ===== Import Banner =====
+let importDismissed = false;
+
+function showImportBanner() {
+  if (importDismissed || !isOnline || !hasLocalData() || S.tx.length > 0)
+    return "";
+  return `<div class="import-banner">
+    <div class="mu">You have local data from offline mode. Import it to your cloud account?</div>
+    <button class="btn" onclick="importLocal()" style="margin-top:0">Import</button>
+    <button class="btn s" onclick="dismissImport()" style="margin-top:0">Skip</button>
+  </div>`;
+}
+
+async function importLocal() {
+  try {
+    const r = localStorage.getItem("lkb1");
+    if (!r) return;
+    const localData = JSON.parse(r);
+    document.getElementById("v").innerHTML =
+      '<div class="loading">Importing data...</div>';
+    await sbImportData(localData);
+    await loadFromSupabase();
+    importDismissed = true;
+    draw();
+  } catch (err) {
+    alert("Import failed: " + (err.message || err));
+    draw();
+  }
+}
+
+function dismissImport() {
+  importDismissed = true;
+  draw();
+}
+
 // ===== Navigation =====
 function nav() {
   document.getElementById("nav").innerHTML = [
@@ -142,8 +290,9 @@ function nav() {
 
 function draw() {
   nav();
+  const banner = showImportBanner();
   document.getElementById("v").innerHTML =
-    tab == "add" ? vAdd() : tab == "sum" ? vSum() : vSet();
+    banner + (tab == "add" ? vAdd() : tab == "sum" ? vSum() : vSet());
   if (tab == "add") cats();
 }
 
@@ -162,7 +311,7 @@ function vAdd() {
 <div class="card"><b>New entry · ការបញ្ចូលថ្មី</b><div class="g"><div><label>Date</label><input type="date" id="d" value="${today()}"></div>
 <div><label>Type</label><select id="t" onchange="cats()"><option value="out">Expense · ចំណាយ</option><option value="in">Income · ចំណូល</option><option value="sv">Savings deposit · ដាក់ប្រាក់សន្សំ</option></select></div>
 <div><label>Category</label><select id="c"></select></div><div><label>Amount ($)</label><input id="a" type="number" step="0.01" min="0" placeholder="0.00"></div></div>
-<label>Note (optional)</label><input id="n" maxlength="80"><button class="btn" onclick="add()">Add entry</button> <span class="mu" id="m"></span></div>
+<label>Note (optional)</label><input id="n" maxlength="80"><button class="btn" onclick="addEntry()">Add entry</button> <span class="mu" id="m"></span></div>
 <div class="card"><label>Pay period · រយៈពេល</label><select onchange="per=+this.value;draw()">${Array.from(
     { length: S.s.n },
     (_, i) =>
@@ -190,7 +339,7 @@ function cats() {
     .join("");
 }
 
-function add() {
+async function addEntry() {
   const d = document.getElementById("d").value,
     a = parseFloat(document.getElementById("a").value);
   if (!d || !(a > 0)) {
@@ -203,23 +352,49 @@ function add() {
       "That date is outside the pay periods in Settings.";
     return;
   }
-  S.tx.push({
-    id: Date.now(),
+
+  const entry = {
     d,
     t: document.getElementById("t").value,
     c: document.getElementById("c").value,
     a: Math.round(a * 100) / 100,
     n: document.getElementById("n").value,
-  });
-  per = po(d);
-  save();
-  draw();
+  };
+
+  if (isOnline) {
+    try {
+      document.getElementById("m").textContent = "Saving...";
+      const saved = await sbAddTransaction(entry);
+      S.tx.push(saved);
+      per = po(d);
+      draw();
+    } catch (err) {
+      document.getElementById("m").textContent =
+        "Error: " + (err.message || "Failed to save.");
+    }
+  } else {
+    entry.id = Date.now();
+    S.tx.push(entry);
+    per = po(d);
+    saveLocal();
+    draw();
+  }
 }
 
-function del(id) {
-  S.tx = S.tx.filter((t) => t.id != id);
-  save();
-  draw();
+async function del(id) {
+  if (isOnline) {
+    try {
+      await sbDeleteTransaction(id);
+      S.tx = S.tx.filter((t) => t.id != id);
+      draw();
+    } catch (err) {
+      alert("Error deleting: " + (err.message || err));
+    }
+  } else {
+    S.tx = S.tx.filter((t) => t.id != id);
+    saveLocal();
+    draw();
+  }
 }
 
 // ===== Summary View =====
@@ -286,29 +461,55 @@ function tsv() {
 function vSet() {
   return `<div class="card"><b>Settings · ការកំណត់</b><div class="g"><div><label>Savings target (%)</label><input id="sg" type="number" value="${S.s.target}"></div>
 <div><label>First payday</label><input id="ss" type="date" value="${S.s.start}"></div><div><label>Number of pay periods</label><input id="sn" type="number" min="1" max="60" value="${S.s.n}"></div></div><button class="btn" onclick="sets()">Save settings</button> <span class="mu" id="m"></span></div>
-<div class="card"><b>Backup · ការបម្រុងទុក</b><p class="mu">Data is saved in this browser only. Copy the backup text somewhere safe, and paste it back to restore.</p><textarea id="bk" rows="4">${esc(JSON.stringify(S))}</textarea><button class="btn s" onclick="rest()">Restore from text</button></div>`;
+<div class="card"><b>Backup · ការបម្រុងទុក</b><p class="mu">${
+    isOnline
+      ? "Your data is synced to the cloud. You can still export a local backup below."
+      : "Data is saved in this browser only. Copy the backup text somewhere safe, and paste it back to restore."
+  }</p><textarea id="bk" rows="4">${esc(JSON.stringify(S))}</textarea><button class="btn s" onclick="rest()">Restore from text</button></div>`;
 }
 
-function sets() {
+async function sets() {
   S.s.target = +document.getElementById("sg").value || 20;
   S.s.start = document.getElementById("ss").value || S.s.start;
   S.s.n = Math.min(
     60,
     Math.max(1, +document.getElementById("sn").value || 14)
   );
-  save();
-  per = null;
-  document.getElementById("m").textContent = "Saved.";
+
+  if (isOnline) {
+    try {
+      document.getElementById("m").textContent = "Saving...";
+      await sbSaveProfile(S.s);
+      per = null;
+      document.getElementById("m").textContent = "Saved.";
+    } catch (err) {
+      document.getElementById("m").textContent =
+        "Error: " + (err.message || "Failed to save.");
+    }
+  } else {
+    saveLocal();
+    per = null;
+    document.getElementById("m").textContent = "Saved.";
+  }
 }
 
-function rest() {
+async function rest() {
   try {
     const o = JSON.parse(document.getElementById("bk").value);
     if (o.s && Array.isArray(o.tx)) {
-      S = { s: o.s, tx: o.tx };
-      save();
-      per = null;
-      draw();
+      if (isOnline) {
+        // Import the restored data to Supabase
+        document.getElementById("v").innerHTML =
+          '<div class="loading">Restoring data to cloud...</div>';
+        await sbImportData(o);
+        await loadFromSupabase();
+        draw();
+      } else {
+        S = { s: o.s, tx: o.tx };
+        saveLocal();
+        per = null;
+        draw();
+      }
     }
   } catch (e) {
     alert("Backup text is not valid.");
@@ -316,4 +517,47 @@ function rest() {
 }
 
 // ===== Init =====
-draw();
+(async function init() {
+  // Check for existing Supabase session
+  try {
+    const user = await sbGetUser();
+    if (user) {
+      currentUser = user;
+      isOnline = true;
+      document.getElementById("app").style.display = "block";
+      document.getElementById("v").innerHTML =
+        '<div class="loading">Loading your data...</div>';
+      renderUserBar();
+      nav();
+      await loadFromSupabase();
+      draw();
+      return;
+    }
+  } catch (e) {
+    // No session or Supabase unreachable — fall through to auth screen
+  }
+
+  // No active session — show auth screen
+  showAuth();
+
+  // Listen for auth state changes (handles login after showing auth screen)
+  sbOnAuthChange(async (user, event) => {
+    if (user && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
+      currentUser = user;
+      isOnline = true;
+      document.getElementById("app").style.display = "block";
+      document.getElementById("auth-screen").style.display = "none";
+      document.getElementById("v").innerHTML =
+        '<div class="loading">Loading your data...</div>';
+      renderUserBar();
+      nav();
+      try {
+        await loadFromSupabase();
+      } catch (e) {
+        // If load fails, start with empty data
+        S = { s: { target: 20, start: "2026-11-02", n: 14 }, tx: [] };
+      }
+      draw();
+    }
+  });
+})();
