@@ -7,6 +7,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0c1019">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Waypoint">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="dark-theme">
@@ -128,24 +139,54 @@
       <!-- Top Mobile Bar -->
       <header class="top-bar">
         <div class="mobile-brand">
-          <div class="brand-icon small">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m16 8-8 8"/><path d="M8 8h8v8"/></svg>
+          <div class="mobile-avatar-wrap" onclick="document.getElementById('avatar-file-input').click()" title="Change photo">
+            <span class="mobile-avatar-fallback" id="mobile-avatar-fallback">U</span>
+            <img id="mobile-avatar-img" class="mobile-avatar-img" style="display:none;" alt="Avatar">
           </div>
-          <span>Waypoint Budget</span>
+          <div>
+            <span class="mobile-title">Waypoint</span>
+            <div class="mobile-sync">
+              <span class="sync-dot" id="mobile-sync-dot"></span>
+              <span id="mobile-sync-text">Connected</span>
+            </div>
+          </div>
         </div>
         <div class="top-bar-actions">
-          <button class="btn btn-primary btn-sm mobile-add" onclick="openAddModal()">+ Add</button>
-          <div id="mobile-nav-toggle" class="mobile-tabs">
-            <button class="tab-btn active" onclick="switchTab('dash')">Dashboard</button>
-            <button class="tab-btn" onclick="switchTab('txs')">Transactions</button>
-            <button class="tab-btn" onclick="switchTab('sum')">Summary</button>
-            <button class="tab-btn" onclick="switchTab('set')">Settings</button>
-          </div>
+          <button id="pwa-install-btn" class="btn btn-ghost btn-sm pwa-btn" style="display:none;" onclick="triggerPwaInstall()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            <span>Install</span>
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add</button>
         </div>
       </header>
 
       <!-- View Container (rendered dynamically) -->
       <div id="v" class="view-content"></div>
+
+      <!-- Mobile Bottom Navigation Bar (Native App Feel) -->
+      <nav class="mobile-bottom-nav">
+        <button class="bnav-item active" data-tab="dash" onclick="switchTab('dash')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="bnav-item" data-tab="txs" onclick="switchTab('txs')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+          <span>Activity</span>
+        </button>
+        <button class="bnav-item fab-center" onclick="openAddModal()" title="Add Transaction">
+          <div class="fab-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+          </div>
+        </button>
+        <button class="bnav-item" data-tab="sum" onclick="switchTab('sum')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          <span>Summary</span>
+        </button>
+        <button class="bnav-item" data-tab="set" onclick="switchTab('set')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>
+          <span>Settings</span>
+        </button>
+      </nav>
 
     </main>
   </div>

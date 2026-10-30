@@ -263,10 +263,11 @@ function switchTab(tab) {
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.classList.toggle("active", b.dataset.tab === tab);
   });
-  document.querySelectorAll(".mobile-tabs .tab-btn").forEach((b) => {
-    b.classList.toggle("active", b.textContent.toLowerCase().startsWith(tab));
+  document.querySelectorAll(".mobile-bottom-nav .bnav-item").forEach((b) => {
+    b.classList.toggle("active", b.dataset.tab === tab);
   });
   draw();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function draw() {
@@ -1060,6 +1061,18 @@ function updateUserDisplay() {
   if (profileName) profileName.textContent = displayName;
   if (fallback) fallback.textContent = initial;
 
+  // Mobile elements
+  const mobFallback = document.getElementById("mobile-avatar-fallback");
+  const mobSyncDot = document.getElementById("mobile-sync-dot");
+  const mobSyncText = document.getElementById("mobile-sync-text");
+  if (mobFallback) mobFallback.textContent = initial;
+  if (mobSyncDot) {
+    mobSyncDot.className = "sync-dot" + (isOnline && currentUser ? "" : " offline");
+  }
+  if (mobSyncText) {
+    mobSyncText.textContent = isOnline && currentUser ? "Connected" : "Offline";
+  }
+
   // Load avatar
   const avatarKey = "wb_avatar_" + (currentUser?.id || "guest");
   const savedAvatar = S.s?.avatar || localStorage.getItem(avatarKey);
@@ -1069,15 +1082,19 @@ function updateUserDisplay() {
 function renderAvatar(avatarDataUrl) {
   const img = document.getElementById("profile-avatar-img");
   const fallback = document.getElementById("profile-avatar-fallback");
-  if (!img || !fallback) return;
+  const mobImg = document.getElementById("mobile-avatar-img");
+  const mobFallback = document.getElementById("mobile-avatar-fallback");
 
   if (avatarDataUrl) {
-    img.src = avatarDataUrl;
-    img.style.display = "block";
-    fallback.style.display = "none";
+    if (img) { img.src = avatarDataUrl; img.style.display = "block"; }
+    if (fallback) fallback.style.display = "none";
+    if (mobImg) { mobImg.src = avatarDataUrl; mobImg.style.display = "block"; }
+    if (mobFallback) mobFallback.style.display = "none";
   } else {
-    img.style.display = "none";
-    fallback.style.display = "block";
+    if (img) img.style.display = "none";
+    if (fallback) fallback.style.display = "block";
+    if (mobImg) mobImg.style.display = "none";
+    if (mobFallback) mobFallback.style.display = "flex";
   }
 }
 
@@ -1189,3 +1206,40 @@ async function handleLogout() {
     }
   });
 })();
+
+// =========================================================
+// PWA Installation & Service Worker
+// =========================================================
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById("pwa-install-btn");
+  if (btn) btn.style.display = "inline-flex";
+});
+
+function triggerPwaInstall() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === "accepted") {
+        const btn = document.getElementById("pwa-install-btn");
+        if (btn) btn.style.display = "none";
+      }
+      deferredInstallPrompt = null;
+    });
+  } else {
+    // If iOS Safari or browser without prompt, show instructions
+    alert("To install this app on your phone:\n\n• On iPhone (Safari): Tap the Share button (bottom center) and choose 'Add to Home Screen'.\n\n• On Android (Chrome): Tap the 3 dots menu and choose 'Install app' or 'Add to Home screen'.");
+  }
+}
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.warn("ServiceWorker registration skipped:", err);
+    });
+  });
+}
+

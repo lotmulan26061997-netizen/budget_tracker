@@ -30,6 +30,23 @@ budget_tracker/
 └── README.md
 ```
 
+## Mobile & PWA Installation
+
+You can install this app on any smartphone like a native iOS or Android app:
+
+### On iPhone (Safari):
+1. Open the deployed website in Safari.
+2. Tap the **Share** button (box with an arrow pointing up).
+3. Scroll down and tap **"Add to Home Screen"**.
+4. Tap **Add**. The app icon will now appear on your iPhone home screen and run full-screen without browser bars!
+
+### On Android (Chrome):
+1. Open the website in Google Chrome.
+2. Tap the **"Install"** button in the top bar (or tap the 3 dots menu `⋮` → **"Install app"** / **"Add to Home screen"**).
+3. Tap **Install**.
+
+---
+
 ## Setup
 
 ### 1. Supabase Database
