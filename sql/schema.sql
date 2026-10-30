@@ -3,15 +3,14 @@
 -- Run this in: Supabase Dashboard → SQL Editor
 -- =============================================
 
--- Clean up any existing objects first
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-DROP TRIGGER IF EXISTS profiles_updated_at ON profiles;
-DROP FUNCTION IF EXISTS handle_new_user() CASCADE;
-DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
+-- 1. Clean up old tables (CASCADE automatically drops attached triggers and policies)
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
 
--- 1. Profiles table (user settings)
+-- 2. Profiles table (user settings)
 CREATE TABLE profiles (
   id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   target      NUMERIC     NOT NULL DEFAULT 20,
@@ -21,7 +20,7 @@ CREATE TABLE profiles (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2. Transactions table
+-- 3. Transactions table (with tx_date)
 CREATE TABLE transactions (
   id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id    UUID          NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -36,7 +35,7 @@ CREATE TABLE transactions (
 CREATE INDEX idx_transactions_user ON transactions(user_id);
 CREATE INDEX idx_transactions_date ON transactions(user_id, tx_date);
 
--- 3. Row Level Security
+-- 4. Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
@@ -52,7 +51,7 @@ CREATE POLICY "transactions_insert" ON transactions FOR INSERT WITH CHECK (auth.
 CREATE POLICY "transactions_update" ON transactions FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "transactions_delete" ON transactions FOR DELETE USING (auth.uid() = user_id);
 
--- 4. Auto-create profile when a new user signs up
+-- 5. Auto-create profile when a new user signs up
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -65,7 +64,7 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
--- 5. Auto-update timestamp on profile changes
+-- 6. Auto-update timestamp on profile changes
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -78,7 +77,7 @@ CREATE TRIGGER profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- 6. Also create profiles for any existing users that don't have one yet
+-- 7. Backfill profiles for existing users who already signed up
 INSERT INTO profiles (id)
 SELECT id FROM auth.users
 ON CONFLICT (id) DO NOTHING;
