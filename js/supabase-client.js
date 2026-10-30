@@ -44,8 +44,20 @@ function sbOnAuthChange(callback) {
 // ===== Profile (Settings) =====
 
 async function sbLoadProfile() {
-  const { data, error } = await sb.from("profiles").select("*").single();
+  const { data, error } = await sb.from("profiles").select("*").maybeSingle();
   if (error) throw error;
+  if (!data) {
+    const user = await sbGetUser();
+    if (user) {
+      await sb.from("profiles").upsert({
+        id: user.id,
+        target: 20,
+        start_date: "2026-11-02",
+        num_periods: 14,
+      });
+    }
+    return { target: 20, start: "2026-11-02", n: 14 };
+  }
   return {
     target: Number(data.target),
     start: data.start_date,
