@@ -243,10 +243,11 @@ function calc() {
   R.forEach((r) => {
     r.out = r.c.reduce((x, y) => x + y, 0);
     r.sav = r.inc - r.out;
-    r.pct = r.inc ? r.sav / r.inc : 0;
+    r.rem = r.sav - r.dep; // Remaining after spending AND savings deposits
+    r.pct = r.inc ? r.rem / r.inc : 0;
     r.tg = (r.inc * S.s.target) / 100;
-    r.vs = r.sav - r.tg;
-    cum += r.sav;
+    r.vs = r.rem - r.tg;
+    cum += r.rem;
     r.cum = cum;
     cd += r.dep;
     r.cd = cd;
@@ -294,9 +295,10 @@ function draw() {
 // View 1: Dashboard (Matches Image 1, 2, and 3)
 // =========================================================
 function vDashboard() {
-  const R = calc()[per] || { inc: 0, out: 0, sav: 0, dep: 0, c: OUT_KEYS.map(() => 0) };
+  const R = calc()[per] || { inc: 0, out: 0, sav: 0, rem: 0, dep: 0, c: OUT_KEYS.map(() => 0) };
+  if (R.rem === undefined) R.rem = R.sav - R.dep; // fallback
   const tx = S.tx.filter((t) => po(t.d) === per).sort((a, b) => b.d.localeCompare(a.d));
-  const isOverBudget = R.sav < 0;
+  const isOverBudget = R.rem < 0;
 
   // Compute category totals for breakdown
   const categoryBreakdown = OUT_KEYS.map((name, idx) => ({
@@ -358,7 +360,7 @@ function vDashboard() {
           </div>
           <span class="metric-label">Remaining · នៅសល់</span>
         </div>
-        <div class="metric-value ${isOverBudget ? "negative" : ""}">${$(R.sav)}</div>
+        <div class="metric-value ${isOverBudget ? "negative" : ""}">${$(R.rem)}</div>
         <div class="metric-sub">
           <span class="status-pill ${isOverBudget ? "danger" : "success"}">
             ${isOverBudget ? "Over budget" : "On track"} (${(R.pct * 100).toFixed(1)}%)
